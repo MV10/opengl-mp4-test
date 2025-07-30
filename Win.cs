@@ -53,7 +53,7 @@ public class Win : BaseWindow, IDisposable
     {
         base.OnLoad();
 
-        MP4.Load(@"C:\Source\GLMP4\GLMP4\bin\Debug\net8.0\example.mp4");
+        MP4.Load(@"example.mp4");
         if (!MP4.IsLoaded)
         {
             Close();
