@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>opengl_mp4_test</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<None Remove="example.mp4" />
+		<None Remove="shader.frag" />
+		<None Remove="shader.vert" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="example.mp4">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+		<Content Include="shader.frag">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+		<Content Include="shader.vert">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="eyecandy" Version="3.0.2" />
+		<PackageReference Include="FFMediaToolkit" Version="4.6.0" />
+		<PackageReference Include="OpenTK" Version="4.9.4" />
+	</ItemGroup>
+
+</Project>
