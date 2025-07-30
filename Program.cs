@@ -11,7 +11,7 @@ internal class Program
         Console.WriteLine("\nOpenGL MP4 Playback Test\n\n");
 
         var windowConfig = new EyeCandyWindowConfig();
-        windowConfig.OpenTKNativeWindowSettings.Title = "GLMP4";
+        windowConfig.OpenTKNativeWindowSettings.Title = "opengl-mp4-test";
         windowConfig.OpenTKNativeWindowSettings.ClientSize = (960, 540);
         windowConfig.StartFullScreen = false;
         windowConfig.OpenTKNativeWindowSettings.APIVersion = new Version(4, 5);

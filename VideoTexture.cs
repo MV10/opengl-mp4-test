@@ -88,10 +88,23 @@ public class VideoTexture : IDisposable
 
             GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
 
+            // Flip the frame data vertically to match OpenGL's bottom-left origin (Parallel.ForEach is only faster for large videos, such as 4K)
+            int bytesPerPixel = 4; // RGBA32
+            int rowBytes = Width * bytesPerPixel;
+            byte[] flippedData = new byte[frame.Data.Length];
+
+            for (int y = 0; y < Height; y++)
+            {
+                // Copy row (Height - 1 - y) to row y
+                int sourceOffset = y * frame.Stride;
+                int destOffset = (Height - 1 - y) * rowBytes;
+                frame.Data.Slice(sourceOffset, rowBytes).CopyTo(flippedData.AsSpan(destOffset, rowBytes));
+            }
+
             // Update texture with new frame data
             unsafe
             {
-                fixed (byte* ptr = frame.Data)
+                fixed (byte* ptr = flippedData)
                 {
                     GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Rgba, PixelType.UnsignedByte, (IntPtr)ptr);
                 }
