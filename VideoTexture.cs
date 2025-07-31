@@ -7,32 +7,37 @@ namespace opengl_mp4_test;
 
 public class VideoTexture : IDisposable
 {
-    private MediaFile? _mediaFile;
-    private VideoStream? _videoStream;
     private TimeSpan _lastUpdateTime = TimeSpan.Zero;
 
+    public MediaFile? File;
+    public VideoStream? Stream;
     public int TextureHandle = -1;
     public int Width { get; private set; }
     public int Height { get; private set; }
-    public bool IsLoaded => _mediaFile != null;
-    public TimeSpan Duration => _videoStream?.Info.Duration ?? TimeSpan.Zero;
+    public bool IsLoaded => File != null;
+    public TimeSpan Duration => Stream?.Info.Duration ?? TimeSpan.Zero;
 
-    public void Load(string filePath)
+    public void Load(string filePath) => Load(filePath, new());
+
+    public void Load(string filePath, MediaOptions options)
     {
         Dispose(); // Clean up if reloading
 
+        // Require RGBA output for direct OpenGL compatibility
+        options.VideoPixelFormat = ImagePixelFormat.Rgba32;
+
         try
         {
-            _mediaFile = MediaFile.Open(filePath, new MediaOptions { VideoPixelFormat = ImagePixelFormat.Rgba32 }); // Request RGBA output for direct OpenGL compatibility
-            _videoStream = _mediaFile.Video;
+            File = MediaFile.Open(filePath, options); 
+            Stream = File.Video;
 
-            if (_videoStream == null)
+            if (Stream == null)
             {
                 throw new InvalidOperationException("No video stream found in the file.");
             }
 
-            Width = _videoStream.Info.FrameSize.Width;
-            Height = _videoStream.Info.FrameSize.Height;
+            Width = Stream.Info.FrameSize.Width;
+            Height = Stream.Info.FrameSize.Height;
 
             // Create OpenGL texture
             TextureHandle = GL.GenTexture();
@@ -61,7 +66,7 @@ public class VideoTexture : IDisposable
     /// <param name="currentTime">The desired playback time.</param>
     public void Update(TimeSpan currentTime)
     {
-        if (!IsLoaded || _videoStream == null) return;
+        if (!IsLoaded || Stream == null) return;
 
         if (currentTime > Duration)
         {
@@ -78,7 +83,7 @@ public class VideoTexture : IDisposable
         Error Handling: In production, add try-catch around GetFrame as it may throw exceptions on severe
         errors (e.g., corrupt files). The empty check handles most end-of-stream cases gracefully.
         */
-        var frame = _videoStream.GetFrame(currentTime);
+        var frame = Stream.GetFrame(currentTime);
 
         if (!frame.Data.IsEmpty)
         {
@@ -88,7 +93,7 @@ public class VideoTexture : IDisposable
 
             GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
 
-            // Flip the frame data vertically to match OpenGL's bottom-left origin (Parallel.ForEach is only faster for large videos, such as 4K)
+            // Flip the frame data vertically to match OpenGL's bottom-left origin (parallel is only faster for high-res videos)
             int bytesPerPixel = 4; // RGBA32
             int rowBytes = Width * bytesPerPixel;
             byte[] flippedData = new byte[frame.Data.Length];
@@ -137,8 +142,8 @@ public class VideoTexture : IDisposable
             TextureHandle = -1;
         }
 
-        _mediaFile?.Dispose();
-        _mediaFile = null;
-        _videoStream = null;
+        File?.Dispose();
+        File = null;
+        Stream = null;
     }
 }

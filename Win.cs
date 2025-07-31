@@ -1,8 +1,8 @@
 ﻿
 using eyecandy;
 using FFMediaToolkit;
+using FFMediaToolkit.Decoding;
 using OpenTK.Graphics.OpenGL;
-using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
@@ -53,8 +53,34 @@ public class Win : BaseWindow, IDisposable
     {
         base.OnLoad();
 
-        MP4.Load(@"example.mp4");
-        if (!MP4.IsLoaded)
+        // Audio is not supported
+        var options = new MediaOptions
+        {
+            StreamsToLoad = MediaMode.Video
+        };
+
+        // Included in this repository
+        MP4.Load(@"example.mp4", options);
+
+        // Examples from MV10\volts-laboratory
+        //MP4.Load(@"C:\Source\volts-laboratory\textures\traffic.mp4", options);
+        //MP4.Load(@"C:\Source\volts-laboratory\textures\dancer.mp4", options);
+        //MP4.Load(@"C:\Source\volts-laboratory\textures\costume.mp4", options);
+
+        if (MP4.IsLoaded && MP4.File.HasVideo)
+        {
+            Console.WriteLine($"Video file: {MP4.File.Info.FilePath}");
+            Console.WriteLine($"Dimensions: {MP4.Width}x{MP4.Height}");
+            Console.WriteLine($"Duration: {MP4.Duration.TotalSeconds} seconds");
+            Console.WriteLine($"Bitrate: {MP4.File.Info.Bitrate / 1000.0} kb/s");
+            var info = MP4.File.Video.Info;
+            Console.WriteLine($"Frame rate: {info.AvgFrameRate} fps ({(info.IsVariableFrameRate ? "average" : "constant")})");
+            Console.WriteLine($"Frame size: {info.FrameSize}");
+            Console.WriteLine($"Pixel format: {info.PixelFormat}");
+            Console.WriteLine($"Codec: {info.CodecName}");
+            Console.WriteLine($"Interlaced: {info.IsInterlaced}");
+        }
+        else
         {
             Close();
             return;
