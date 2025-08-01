@@ -10,7 +10,15 @@ public class VideoTexture : IDisposable
 {
     private TimeSpan _lastUpdateTime = TimeSpan.Zero;
     private TimeSpan _lastStreamPosition = TimeSpan.Zero;
+    private long _frameCount = 0;
     private long _streamSkips = 0;
+
+    private Stopwatch FrameClock = new();
+    private Stopwatch PerfClock = new();
+    private TimeSpan FirstFramePerf = TimeSpan.Zero;
+    private TimeSpan DecodePerf = TimeSpan.Zero;
+    private TimeSpan InvertFramePerf = TimeSpan.Zero;
+    private TimeSpan CopyTexturePerf = TimeSpan.Zero;
 
     public MediaFile? File;
     public VideoStream? Stream;
@@ -20,15 +28,10 @@ public class VideoTexture : IDisposable
     public bool IsLoaded => File != null;
     public TimeSpan Duration => Stream?.Info.Duration ?? TimeSpan.Zero;
 
-    private Stopwatch Clock = new();
-    private TimeSpan FirstFramePerf = TimeSpan.Zero;
-
     public void Load(string filePath) => Load(filePath, new());
 
     public void Load(string filePath, MediaOptions options)
     {
-        Dispose(); // Clean up if reloading
-
         // Require RGBA output for direct OpenGL compatibility
         options.VideoPixelFormat = ImagePixelFormat.Rgba32;
 
@@ -81,6 +84,12 @@ public class VideoTexture : IDisposable
 
         if (currentTime == _lastUpdateTime) return; // No need to update if time hasn't changed
 
+        _frameCount++;
+        if (FirstFramePerf == TimeSpan.Zero)
+        {
+            FrameClock.Start();
+        }
+
         /*
         Performance Considerations: For sequential playback without seeking, consider switching to 
         TryGetNextFrame(out ImageData frame) which returns a boolean indicating success. The current 
@@ -89,7 +98,19 @@ public class VideoTexture : IDisposable
         Error Handling: In production, add try-catch around GetFrame as it may throw exceptions on severe
         errors (e.g., corrupt files). The empty check handles most end-of-stream cases gracefully.
         */
+        if (FirstFramePerf == TimeSpan.Zero)
+        {
+            PerfClock.Start();
+        }
+
+        // The ffmpeg frame decoding is the most expensive operation by a large margin (90% of the frame time at 1080p).
         var frame = Stream.GetFrame(currentTime);
+
+        if (FirstFramePerf == TimeSpan.Zero)
+        {
+            PerfClock.Stop();
+            if(!frame.Data.IsEmpty) DecodePerf = PerfClock.Elapsed;
+        }
 
         if (Stream.Position == _lastStreamPosition) _streamSkips++;
 
@@ -97,7 +118,7 @@ public class VideoTexture : IDisposable
         {
             if (FirstFramePerf == TimeSpan.Zero)
             {
-                Clock.Start();
+                PerfClock.Restart();
             }
 
             // Flip the frame data vertically to match OpenGL's bottom-left origin
@@ -125,12 +146,11 @@ public class VideoTexture : IDisposable
 
             if (FirstFramePerf == TimeSpan.Zero)
             {
-                Clock.Stop();
-                FirstFramePerf = Clock.Elapsed;
+                InvertFramePerf = PerfClock.Elapsed;
+                PerfClock.Restart();
             }
 
-            // The OpenGL operations represent much more per-frme overhead than the frame-flip. The PixelStore calls
-            // are apparently not needed and eliminating them slightly improves performance.
+            // The PixelStore calls are apparently not needed and eliminating them slightly improves performance.
             //GL.PixelStore(PixelStoreParameter.UnpackRowLength, frame.Stride / 4); // stride (padding) in bytes divided by 4 RGBA bytes per pixel
             GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
             unsafe
@@ -143,15 +163,31 @@ public class VideoTexture : IDisposable
             GL.BindTexture(TextureTarget.Texture2D, 0);
             //GL.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
 
+            if (FirstFramePerf == TimeSpan.Zero)
+            {
+                PerfClock.Stop();
+                CopyTexturePerf = PerfClock.Elapsed;
+            }
+
             _lastUpdateTime = currentTime;
             _lastStreamPosition = Stream.Position;
+        }
+
+        if (FirstFramePerf == TimeSpan.Zero)
+        {
+            FrameClock.Stop();
+            if(!frame.Data.IsEmpty) FirstFramePerf = FrameClock.Elapsed;
         }
     }
 
     public void Dispose()
     {
-        Console.WriteLine($"Inverting the first frame took {FirstFramePerf.TotalMilliseconds} ms");
-        Console.WriteLine($"Skipped {_streamSkips} buffer updates due to stream position not changing");
+        Console.WriteLine($"Skipped {_streamSkips} of {_frameCount} buffer updates due to stream position not changing");
+        Console.WriteLine("First frame performance:");
+        Console.WriteLine($"  Stream decoding: {DecodePerf.Microseconds} µs");
+        Console.WriteLine($"  Frame inversion: {InvertFramePerf.Microseconds} µs");
+        Console.WriteLine($"  Texture copy: {CopyTexturePerf.Microseconds} µs");
+        Console.WriteLine($"  Total frame time: {FirstFramePerf.Microseconds} µs");
 
         if (TextureHandle != -1)
         {
