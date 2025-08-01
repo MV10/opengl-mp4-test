@@ -59,7 +59,7 @@ public class Win : BaseWindow, IDisposable
             StreamsToLoad = MediaMode.Video
         };
 
-        // Included in this repository
+        // Included in this repository (taken from the Monkey Hi Hat repo's readme page)
         MP4.Load(@"example.mp4", options);
 
         // Examples from MV10\volts-laboratory

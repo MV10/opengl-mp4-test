@@ -1,7 +1,7 @@
 ﻿
 using FFMediaToolkit.Decoding;
 using FFMediaToolkit.Graphics;
-using OpenTK.Graphics.OpenGL4;
+using OpenTK.Graphics.OpenGL;
 using System.Diagnostics;
 
 namespace opengl_mp4_test;
@@ -9,14 +9,19 @@ namespace opengl_mp4_test;
 public class VideoTexture : IDisposable
 {
     private TimeSpan _lastUpdateTime = TimeSpan.Zero;
+    private TimeSpan _lastStreamPosition = TimeSpan.Zero;
+    private long _streamSkips = 0;
 
     public MediaFile? File;
     public VideoStream? Stream;
     public int TextureHandle = -1;
-    public int Width { get; private set; }
-    public int Height { get; private set; }
+    public int Width;
+    public int Height;
     public bool IsLoaded => File != null;
     public TimeSpan Duration => Stream?.Info.Duration ?? TimeSpan.Zero;
+
+    private Stopwatch Clock = new();
+    private TimeSpan FirstFramePerf = TimeSpan.Zero;
 
     public void Load(string filePath) => Load(filePath, new());
 
@@ -86,29 +91,29 @@ public class VideoTexture : IDisposable
         */
         var frame = Stream.GetFrame(currentTime);
 
-        if (!frame.Data.IsEmpty)
+        if (Stream.Position == _lastStreamPosition) _streamSkips++;
+
+        if (!frame.Data.IsEmpty && Stream.Position != _lastStreamPosition)
         {
-            // Since we requested Rgba32, frame.PixelFormat should be Rgba32
-            // Handle potential stride (padding) in the image data
-            GL.PixelStore(PixelStoreParameter.UnpackRowLength, frame.Stride / 4); // Stride in bytes, divide by bytes per pixel (4 for RGBA)
+            if (FirstFramePerf == TimeSpan.Zero)
+            {
+                Clock.Start();
+            }
 
-            GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
-
-            // Flip the frame data vertically to match OpenGL's bottom-left origin (parallel is only faster for high-res videos)
-            int bytesPerPixel = 4; // RGBA32
-            int rowBytes = Width * bytesPerPixel;
+            // Flip the frame data vertically to match OpenGL's bottom-left origin
+            int rowBytes = Width * 4; // RGBA32 is 4 bpp
             byte[] flippedData = new byte[frame.Data.Length];
 
             for (int y = 0; y < Height; y++)
             {
-                // Copy row (Height - 1 - y) to row y
                 int sourceOffset = y * frame.Stride;
                 int destOffset = (Height - 1 - y) * rowBytes;
                 frame.Data.Slice(sourceOffset, rowBytes).CopyTo(flippedData.AsSpan(destOffset, rowBytes));
             }
 
             // Parallel version is about 40X slower for a 360p video, likely due to both thread-scheduling overhead and the
-            // extra copy of the frame data needed because the lambda can't access the frame.Data ref struct directly.
+            // extra copy of the frame data needed (because the lambda can't access the frame.Data ref struct directly).
+            // For 1080p video, the parallel version is about 7X slower, so parallel processing just has too much overhead.
             //var stride = frame.Stride;
             //var frameData = frame.Data.ToArray();
             //Parallel.For(0, Height, y =>
@@ -118,7 +123,15 @@ public class VideoTexture : IDisposable
             //    Array.Copy(frameData, sourceOffset, flippedData, destOffset, rowBytes);
             //});
 
-            // Update texture with new frame data
+            if (FirstFramePerf == TimeSpan.Zero)
+            {
+                Clock.Stop();
+                FirstFramePerf = Clock.Elapsed;
+            }
+
+            // The OpenGL operations represent much more per-frme overhead than the frame-flip.
+            GL.PixelStore(PixelStoreParameter.UnpackRowLength, frame.Stride / 4); // stride (padding) in bytes divided by 4 RGBA bytes per pixel
+            GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
             unsafe
             {
                 fixed (byte* ptr = flippedData)
@@ -126,18 +139,19 @@ public class VideoTexture : IDisposable
                     GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Rgba, PixelType.UnsignedByte, (IntPtr)ptr);
                 }
             }
-
             GL.BindTexture(TextureTarget.Texture2D, 0);
-
-            // Reset unpack row length to default
             GL.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
 
             _lastUpdateTime = currentTime;
+            _lastStreamPosition = Stream.Position;
         }
     }
 
     public void Dispose()
     {
+        Console.WriteLine($"Inverting the first frame took {FirstFramePerf.TotalMilliseconds} ms");
+        Console.WriteLine($"Skipped {_streamSkips} buffer updates due to stream position not changing");
+
         if (TextureHandle != -1)
         {
             GL.DeleteTexture(TextureHandle);
