@@ -63,6 +63,10 @@ public class Win : BaseWindow, IDisposable
         MP4.Load(@"example.mp4", options);
 
         // Examples from MV10\volts-laboratory
+        //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy LustreCreme.ogv", options);
+        //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy Britney.webm", options);
+        //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy VanDamme.webm", options);
+        //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy GoogleChrome.ogv", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\traffic.mp4", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\dancer.mp4", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\costume.mp4", options);
@@ -118,7 +122,6 @@ public class Win : BaseWindow, IDisposable
 
         var currentTime = TimeSpan.FromSeconds(Clock.Elapsed.TotalSeconds);
         MP4.Update(currentTime);
-        MP4.Bind();
         Shader.SetTexture("video", MP4.TextureHandle, TextureUnit.Texture0);
 
         GL.BindVertexArray(VertexArrayObject);

@@ -124,16 +124,6 @@ public class VideoTexture : IDisposable
         }
     }
 
-    /// <summary>
-    /// Binds the texture for rendering (e.g., on a quad).
-    /// </summary>
-    public void Bind(int textureUnit = 0)
-    {
-        if (TextureHandle == -1) return;
-        GL.ActiveTexture(TextureUnit.Texture0 + textureUnit);
-        GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
-    }
-
     public void Dispose()
     {
         if (TextureHandle != -1)
