@@ -2,6 +2,7 @@
 using FFMediaToolkit.Decoding;
 using FFMediaToolkit.Graphics;
 using OpenTK.Graphics.OpenGL4;
+using System.Diagnostics;
 
 namespace opengl_mp4_test;
 
@@ -105,6 +106,17 @@ public class VideoTexture : IDisposable
                 int destOffset = (Height - 1 - y) * rowBytes;
                 frame.Data.Slice(sourceOffset, rowBytes).CopyTo(flippedData.AsSpan(destOffset, rowBytes));
             }
+
+            // Parallel version is about 40X slower for a 360p video, likely due to both thread-scheduling overhead and the
+            // extra copy of the frame data needed because the lambda can't access the frame.Data ref struct directly.
+            //var stride = frame.Stride;
+            //var frameData = frame.Data.ToArray();
+            //Parallel.For(0, Height, y =>
+            //{
+            //    int sourceOffset = y * stride;
+            //    int destOffset = (Height - 1 - y) * rowBytes;
+            //    Array.Copy(frameData, sourceOffset, flippedData, destOffset, rowBytes);
+            //});
 
             // Update texture with new frame data
             unsafe
