@@ -60,14 +60,14 @@ public class Win : BaseWindow, IDisposable
         };
 
         // Included in this repository (taken from the Monkey Hi Hat repo's readme page)
-        MP4.Load(@"example.mp4", options);
+        //MP4.Load(@"example.mp4", options);
 
         // Examples from MV10\volts-laboratory
         //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy LustreCreme.ogv", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy Britney.webm", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy VanDamme.webm", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\Shadertoy GoogleChrome.ogv", options);
-        //MP4.Load(@"C:\Source\volts-laboratory\textures\traffic.mp4", options);
+        MP4.Load(@"C:\Source\volts-laboratory\textures\traffic.mp4", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\dancer.mp4", options);
         //MP4.Load(@"C:\Source\volts-laboratory\textures\costume.mp4", options);
 

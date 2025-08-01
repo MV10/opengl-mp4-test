@@ -129,8 +129,9 @@ public class VideoTexture : IDisposable
                 FirstFramePerf = Clock.Elapsed;
             }
 
-            // The OpenGL operations represent much more per-frme overhead than the frame-flip.
-            GL.PixelStore(PixelStoreParameter.UnpackRowLength, frame.Stride / 4); // stride (padding) in bytes divided by 4 RGBA bytes per pixel
+            // The OpenGL operations represent much more per-frme overhead than the frame-flip. The PixelStore calls
+            // are apparently not needed and eliminating them slightly improves performance.
+            //GL.PixelStore(PixelStoreParameter.UnpackRowLength, frame.Stride / 4); // stride (padding) in bytes divided by 4 RGBA bytes per pixel
             GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
             unsafe
             {
@@ -140,7 +141,7 @@ public class VideoTexture : IDisposable
                 }
             }
             GL.BindTexture(TextureTarget.Texture2D, 0);
-            GL.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
+            //GL.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
 
             _lastUpdateTime = currentTime;
             _lastStreamPosition = Stream.Position;
