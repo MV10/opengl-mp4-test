@@ -9,16 +9,16 @@ The included `example.mp4` video is one of the small, low-resolution samples fro
 Frankly I'm not super-impressed with the performance. My desktop is a fairly mid-range setup built in 2020, running an AMD Ryzen 9 3900XT (12 core, 3.8GHz), 16GB of RAM, and an NVIDIA GeForce RTX 2060. Running this app against the included example.mp4 video, I get the following first-frame results:
 
 ```
-55 average FPS, last 10 seconds
-Skipped 360 of 618 buffer updates due to stream position not changing
+98 average FPS, last 10 seconds
+Skipped 458 of 997 buffer updates due to stream position not changing
 First frame performance:
-  Stream decoding: 3 탎
-  Frame inversion: 278 탎
-  Texture copy: 148 탎
-  Total frame time: 574 탎
+  Stream decoding: 244 탎
+  Frame inversion: 106 탎
+  Texture copy: 118 탎
+  Total frame time: 547 탎
 ```
 
-To be clear, this same machine can easily run Monkey Hi Hat shaders at hundreds or even thousands of frames per second, so 55 FPS when the shader is nothing but a pass-through is not great. While it looks like the frame inversion is the bottleneck, with a more realistic video (such as Shadertoy's [in]famous [Britney Spears video](https://www.shadertoy.com/media/a/e81e818ac76a8983d746784b423178ee9f6cdcdf7f8e8d719341a6fe2d2ab303.webm), which is still a modest 512x396 25FPS 64kbps webm) the stream decoding overhead becomes more obvious. 
+To be clear, this same machine can easily run Monkey Hi Hat shaders at hundreds or even thousands of frames per second, so 98 FPS when the shader is nothing but a pass-through is not great. With a more realistic video (such as Shadertoy's [in]famous [Britney Spears video](https://www.shadertoy.com/media/a/e81e818ac76a8983d746784b423178ee9f6cdcdf7f8e8d719341a6fe2d2ab303.webm), which is still a modest 512x396 25FPS 64kbps webm) the stream decoding overhead becomes more obvious. 
 
 ```
 81 average FPS, last 10 seconds
@@ -27,7 +27,9 @@ First frame performance:
   Stream decoding: 777 탎
   Frame inversion: 449 탎
   Texture copy: 852 탎
-  Total frame time: 141 탎
+  Total frame time: 2141 탎
 ```
 
-With some files I have tested with, stream decoding is more than 60% of the total frame time, which is not great.
+With some files I have tested with, stream decoding is more than 70% of the total frame time, which is not great.
+
+The maintainer of the FFMediaToolkit library has added an internal flip option, so the frame-inversion step can be removed once that is released. That will improve performance and remove a fairly large array allocation to store the inverted frame.

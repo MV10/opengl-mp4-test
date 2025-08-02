@@ -88,18 +88,6 @@ public class VideoTexture : IDisposable
         if (FirstFramePerf == TimeSpan.Zero)
         {
             FrameClock.Start();
-        }
-
-        /*
-        Performance Considerations: For sequential playback without seeking, consider switching to 
-        TryGetNextFrame(out ImageData frame) which returns a boolean indicating success. The current 
-        implementation uses GetFrame for flexible time-based updates, suitable for looping or non-linear playback.
-
-        Error Handling: In production, add try-catch around GetFrame as it may throw exceptions on severe
-        errors (e.g., corrupt files). The empty check handles most end-of-stream cases gracefully.
-        */
-        if (FirstFramePerf == TimeSpan.Zero)
-        {
             PerfClock.Start();
         }
 
