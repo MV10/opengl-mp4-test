@@ -6,30 +6,27 @@ It is necessary to download the ffmpeg binaries. The location of these files is 
 
 The included `example.mp4` video is one of the small, low-resolution samples from the Monkey Hi Hat README.
 
-Frankly I'm not super-impressed with the performance. My desktop is a fairly mid-range setup built in 2020, running an AMD Ryzen 9 3900XT (12 core, 3.8GHz), 16GB of RAM, and an NVIDIA GeForce RTX 2060. Running this app against the included example.mp4 video, I get the following first-frame results:
+Frankly I'm not super-impressed with the performance. My desktop is a fairly mid-range setup built in 2020, running an AMD Ryzen 9 3900XT (12 core, 3.8GHz), 16GB of RAM, and an NVIDIA GeForce RTX 2060. Running this app against the included example.mp4 video, I get the following perf metrics:
 
 ```
-98 average FPS, last 10 seconds
-Skipped 458 of 997 buffer updates due to stream position not changing
-First frame performance:
-  Stream decoding: 244 탎
-  Frame inversion: 106 탎
-  Texture copy: 118 탎
-  Total frame time: 547 탎
+Average performance of first 10 non-skipped frames:
+  Stream decoding: 1142.81 탎
+  Frame inversion: 125.78 탎
+  Texture copy: 46.93 탎
+  Total frame time: 1321.98 탎
 ```
 
-To be clear, this same machine can easily run Monkey Hi Hat shaders at hundreds or even thousands of frames per second, so 98 FPS when the shader is nothing but a pass-through is not great. With a more realistic video (such as Shadertoy's [in]famous [Britney Spears video](https://www.shadertoy.com/media/a/e81e818ac76a8983d746784b423178ee9f6cdcdf7f8e8d719341a6fe2d2ab303.webm), which is still a modest 512x396 25FPS 64kbps webm) the stream decoding overhead becomes more obvious. 
+To be clear, this same machine can easily run Monkey Hi Hat shaders at hundreds or even thousands of frames per second, so 50 or 60 FPS when the shader is nothing but a pass-through is not great. With a more realistic video (such as Shadertoy's [in]famous [Britney Spears video](https://www.shadertoy.com/media/a/e81e818ac76a8983d746784b423178ee9f6cdcdf7f8e8d719341a6fe2d2ab303.webm), which is still a modest 512x396 25FPS 64kbps webm) the stream decoding overhead becomes more obvious. 
 
 ```
-81 average FPS, last 10 seconds
-Skipped 702 of 939 buffer updates due to stream position not changing
-First frame performance:
-  Stream decoding: 777 탎
-  Frame inversion: 449 탎
-  Texture copy: 852 탎
-  Total frame time: 2141 탎
+Average performance of first 10 non-skipped frames:
+  Stream decoding: 1843.62 탎
+  Frame inversion: 414.02 탎
+  Texture copy: 558.12 탎
+  Total frame time: 2832.42 탎
 ```
 
-With some files I have tested with, stream decoding is more than 70% of the total frame time, which is not great.
+Stream decoding is just slow.
 
-The maintainer of the FFMediaToolkit library has added an internal flip option, so the frame-inversion step can be removed once that is released. That will improve performance and remove a fairly large array allocation to store the inverted frame.
+The maintainer of the FFMediaToolkit library has added an [internal flip option](https://github.com/radek-k/FFMediaToolkit/commit/fb7a3886e5e5b17b5186cde1ad30b6390c7da903), so the frame-inversion step _could_ be removed once that is released. I expected that to improve performance, but using a local build, to my surprise and great disappointment it was actually even slower... by a lot.
+

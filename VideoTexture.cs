@@ -1,6 +1,7 @@
 ﻿
 using FFMediaToolkit.Decoding;
 using FFMediaToolkit.Graphics;
+using FFmpeg.AutoGen;
 using OpenTK.Graphics.OpenGL;
 using System.Diagnostics;
 
@@ -15,10 +16,12 @@ public class VideoTexture : IDisposable
 
     private Stopwatch FrameClock = new();
     private Stopwatch PerfClock = new();
-    private TimeSpan FirstFramePerf = TimeSpan.Zero;
-    private TimeSpan DecodePerf = TimeSpan.Zero;
-    private TimeSpan InvertFramePerf = TimeSpan.Zero;
-    private TimeSpan CopyTexturePerf = TimeSpan.Zero;
+
+    public TimeSpan DecodePerf = TimeSpan.Zero;
+    public TimeSpan InvertFramePerf = TimeSpan.Zero;
+    public TimeSpan CopyTexturePerf = TimeSpan.Zero;
+    public TimeSpan TotalFramePerf = TimeSpan.Zero;
+    private int _perfIndex = -1;
 
     public MediaFile? File;
     public VideoStream? Stream;
@@ -34,6 +37,11 @@ public class VideoTexture : IDisposable
     {
         // Require RGBA output for direct OpenGL compatibility
         options.VideoPixelFormat = ImagePixelFormat.Rgba32;
+
+        // ******************************************************************************
+        // v4.7.0 local build of FFMediaToolkit but this is slower than doing it locally
+        //   options.FlipVertically = true; // OpenGL expects the origin is at the bottom-left
+        // ******************************************************************************
 
         try
         {
@@ -77,42 +85,41 @@ public class VideoTexture : IDisposable
     {
         if (!IsLoaded || Stream == null) return;
 
-        if (currentTime > Duration)
-        {
-            currentTime = TimeSpan.Zero; // Loop for simplicity; adjust as needed
-        }
-
+        if (currentTime > Duration) currentTime = TimeSpan.Zero; // Loop for simplicity; adjust as needed
         if (currentTime == _lastUpdateTime) return; // No need to update if time hasn't changed
 
         _frameCount++;
-        if (FirstFramePerf == TimeSpan.Zero)
+        if (_perfIndex < 10) _perfIndex++;
+        if (_perfIndex < 10)
         {
-            FrameClock.Start();
-            PerfClock.Start();
+            FrameClock.Restart();
+            PerfClock.Restart();
         }
 
         // The ffmpeg frame decoding is the most expensive operation by a large margin (90% of the frame time at 1080p).
         var frame = Stream.GetFrame(currentTime);
 
-        if (FirstFramePerf == TimeSpan.Zero)
+        if (_perfIndex < 10) PerfClock.Stop();
+
+        bool skip = (frame.Data.IsEmpty || Stream.Position == _lastStreamPosition);
+        if (skip)
         {
-            PerfClock.Stop();
-            if(!frame.Data.IsEmpty) DecodePerf = PerfClock.Elapsed;
+            _streamSkips++;
+            if (_perfIndex < 10) _perfIndex--;
+            FrameClock.Reset();
+            PerfClock.Reset();
+            return;
         }
 
-        if (Stream.Position == _lastStreamPosition) _streamSkips++;
+        DecodePerf += PerfClock.Elapsed;
 
-        if (!frame.Data.IsEmpty && Stream.Position != _lastStreamPosition)
+        if (!skip)
         {
-            if (FirstFramePerf == TimeSpan.Zero)
-            {
-                PerfClock.Restart();
-            }
+            if (_perfIndex < 10) PerfClock.Restart();
 
             // Flip the frame data vertically to match OpenGL's bottom-left origin
             int rowBytes = Width * 4; // RGBA32 is 4 bpp
             byte[] flippedData = new byte[frame.Data.Length];
-
             for (int y = 0; y < Height; y++)
             {
                 int sourceOffset = y * frame.Stride;
@@ -132,9 +139,9 @@ public class VideoTexture : IDisposable
             //    Array.Copy(frameData, sourceOffset, flippedData, destOffset, rowBytes);
             //});
 
-            if (FirstFramePerf == TimeSpan.Zero)
+            if (_perfIndex < 10)
             {
-                InvertFramePerf = PerfClock.Elapsed;
+                InvertFramePerf += PerfClock.Elapsed;
                 PerfClock.Restart();
             }
 
@@ -143,6 +150,7 @@ public class VideoTexture : IDisposable
             GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
             unsafe
             {
+                //fixed (byte* ptr = frame.Data)
                 fixed (byte* ptr = flippedData)
                 {
                     GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Rgba, PixelType.UnsignedByte, (IntPtr)ptr);
@@ -151,31 +159,29 @@ public class VideoTexture : IDisposable
             GL.BindTexture(TextureTarget.Texture2D, 0);
             //GL.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
 
-            if (FirstFramePerf == TimeSpan.Zero)
+            if (_perfIndex < 10)
             {
                 PerfClock.Stop();
-                CopyTexturePerf = PerfClock.Elapsed;
+                CopyTexturePerf += PerfClock.Elapsed;  
             }
 
             _lastUpdateTime = currentTime;
             _lastStreamPosition = Stream.Position;
+
+            if (_perfIndex < 10) TotalFramePerf += FrameClock.Elapsed;
         }
 
-        if (FirstFramePerf == TimeSpan.Zero)
-        {
-            FrameClock.Stop();
-            if(!frame.Data.IsEmpty) FirstFramePerf = FrameClock.Elapsed;
-        }
+        FrameClock.Reset();
     }
 
     public void Dispose()
     {
         Console.WriteLine($"Skipped {_streamSkips} of {_frameCount} buffer updates due to stream position not changing");
-        Console.WriteLine("First frame performance:");
-        Console.WriteLine($"  Stream decoding: {DecodePerf.Microseconds} µs");
-        Console.WriteLine($"  Frame inversion: {InvertFramePerf.Microseconds} µs");
-        Console.WriteLine($"  Texture copy: {CopyTexturePerf.Microseconds} µs");
-        Console.WriteLine($"  Total frame time: {FirstFramePerf.Microseconds} µs");
+        Console.WriteLine("Average performance of first 10 non-skipped frames:");
+        Console.WriteLine($"  Stream decoding: {DecodePerf.TotalMicroseconds / 10:#.##} µs");
+        Console.WriteLine($"  Frame inversion: {InvertFramePerf.TotalMicroseconds / 10:#.##} µs");
+        Console.WriteLine($"  Texture copy: {CopyTexturePerf.TotalMicroseconds / 10:#.##} µs");
+        Console.WriteLine($"  Total frame time: {TotalFramePerf.TotalMicroseconds / 10:#.##} µs");
 
         if (TextureHandle != -1)
         {
