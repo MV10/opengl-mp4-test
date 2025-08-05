@@ -1,7 +1,6 @@
 ﻿
 using FFMediaToolkit.Decoding;
 using FFMediaToolkit.Graphics;
-using FFmpeg.AutoGen;
 using OpenTK.Graphics.OpenGL;
 using System.Diagnostics;
 
@@ -17,11 +16,12 @@ public class VideoTexture : IDisposable
     private Stopwatch FrameClock = new();
     private Stopwatch PerfClock = new();
 
+    // The first 10 decoded frames are used to produce average perf stats.
+    private int _perfIndex = -1;
     public TimeSpan DecodePerf = TimeSpan.Zero;
     public TimeSpan InvertFramePerf = TimeSpan.Zero;
     public TimeSpan CopyTexturePerf = TimeSpan.Zero;
     public TimeSpan TotalFramePerf = TimeSpan.Zero;
-    private int _perfIndex = -1;
 
     public MediaFile? File;
     public VideoStream? Stream;
@@ -90,6 +90,18 @@ public class VideoTexture : IDisposable
 
         _frameCount++;
         if (_perfIndex < 10) _perfIndex++;
+
+        if (_perfIndex == 10)
+        {
+            Console.WriteLine($"\nSkipped {_streamSkips} of {_frameCount} buffer updates due to stream position not changing");
+            Console.WriteLine("Average performance of first 10 non-skipped frames:");
+            Console.WriteLine($"  Stream decoding: {DecodePerf.TotalMicroseconds / 10:#.##} µs");
+            Console.WriteLine($"  Frame inversion: {InvertFramePerf.TotalMicroseconds / 10:#.##} µs");
+            Console.WriteLine($"  Texture copy: {CopyTexturePerf.TotalMicroseconds / 10:#.##} µs");
+            Console.WriteLine($"  Total frame time: {TotalFramePerf.TotalMicroseconds / 10:#.##} µs");
+            _perfIndex++; // Increment to avoid printing this again and to end perf collection
+        }
+
         if (_perfIndex < 10)
         {
             FrameClock.Restart();
@@ -176,13 +188,6 @@ public class VideoTexture : IDisposable
 
     public void Dispose()
     {
-        Console.WriteLine($"Skipped {_streamSkips} of {_frameCount} buffer updates due to stream position not changing");
-        Console.WriteLine("Average performance of first 10 non-skipped frames:");
-        Console.WriteLine($"  Stream decoding: {DecodePerf.TotalMicroseconds / 10:#.##} µs");
-        Console.WriteLine($"  Frame inversion: {InvertFramePerf.TotalMicroseconds / 10:#.##} µs");
-        Console.WriteLine($"  Texture copy: {CopyTexturePerf.TotalMicroseconds / 10:#.##} µs");
-        Console.WriteLine($"  Total frame time: {TotalFramePerf.TotalMicroseconds / 10:#.##} µs");
-
         if (TextureHandle != -1)
         {
             GL.DeleteTexture(TextureHandle);
