@@ -39,7 +39,7 @@ public class VideoTexture : IDisposable
         options.VideoPixelFormat = ImagePixelFormat.Rgba32;
 
         // ******************************************************************************
-        // v4.7.0 local build of FFMediaToolkit but this is slower than doing it locally
+        // added to v4.7.0 of FFMediaToolkit but this is slower than doing it locally
         //   options.FlipVertically = true; // OpenGL expects the origin is at the bottom-left
         // ******************************************************************************
 

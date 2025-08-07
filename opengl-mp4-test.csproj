@@ -29,7 +29,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="eyecandy" Version="3.0.2" />
-		<PackageReference Include="FFMediaToolkit" Version="4.6.0" />
+		<PackageReference Include="FFMediaToolkit" Version="4.7.0" />
 		<PackageReference Include="OpenTK" Version="4.9.4" />
 	</ItemGroup>
 
