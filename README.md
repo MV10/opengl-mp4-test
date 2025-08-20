@@ -12,13 +12,17 @@ Frankly I'm not super-impressed with the performance. My desktop is a fairly mid
 
 ```
 Average performance of first 10 non-skipped frames:
-  Stream decoding: 1142.81 탎
-  Frame inversion: 125.78 탎
-  Texture copy: 46.93 탎
-  Total frame time: 1321.98 탎
+  Stream decoding: 1142.29 탎
+  Frame inversion: 87.19 탎
+  Texture copy: 35.76 탎
+  Total frame time: 1271.55 탎
 ```
 
-To be clear, this same machine can easily run Monkey Hi Hat shaders at hundreds or even thousands of frames per second, so 50 or 60 FPS when the shader is nothing but a pass-through is not great. With a more realistic video (such as Shadertoy's [in]famous [Britney Spears video](https://www.shadertoy.com/media/a/e81e818ac76a8983d746784b423178ee9f6cdcdf7f8e8d719341a6fe2d2ab303.webm), which is still a modest 512x396 25FPS 64kbps webm) the stream decoding overhead becomes more obvious. 
+I had expected flipping the frame to add major overhead, but that wasn't the case. Just doing a loop in C# averaged about 126 탎, and to my surprise, telling ffmpeg to do it internally was dramatically slower. I also tried to parallelize the operation but the threading overhead introduced perf hits as high as 40X. The example above reflects StbImageSharp's built in flip function, which seems to be fastest.
+
+Moving the flip into the same pinned region as the OpenGL texture copy was still faster.
+
+To be clear, this same machine can easily run Monkey Hi Hat shaders at hundreds or even thousands of frames per second, so 50 or 60 FPS when the shader is nothing but a pass-through is not great. With a more realistic video (such as Shadertoy's [in]famous [Britney Spears video](https://www.shadertoy.com/media/a/e81e818ac76a8983d746784b423178ee9f6cdcdf7f8e8d719341a6fe2d2ab303.webm), which is still a modest 512x396 25FPS 64kbps webm) the stream decoding overhead becomes more obvious. The following timings are using a C# frame flip loop.
 
 ```
 Average performance of first 10 non-skipped frames:
@@ -31,7 +35,5 @@ Average performance of first 10 non-skipped frames:
 Stream decoding is just slow.
 
 Given we're measuring microseconds, perf metrics will vary a LOT from one run to the next. If you want to try it on your system, run the app over and over again to get a sense of the range. Always use a Release build, and it's a lot more consistent on a "quiet" system running the app directly (VS still owns the console window and hooks outputs even in Release mode).
-
-The maintainer of the FFMediaToolkit library has added an [internal flip option](https://github.com/radek-k/FFMediaToolkit/commit/fb7a3886e5e5b17b5186cde1ad30b6390c7da903), so the frame-inversion step _could_ be removed. I expected that to improve performance, but to my surprise and great disappointment it was actually even slower... by a lot. Since this might vary on different hardware, for Monkey Hi Hat I implemented a switch so the user can select internal flipping, ffmpeg flipping, or even disable flipping entirely, which is useful for videos that are already oriented correctly. You can see the option commented out at the top of the `VideoTexture.Load` method.
 
 Eventually I may try to move video playback support into a background thread, as the CPU is generally under-utilized by Monkey Hi Hat. This should decouple video decoding from the render loop.

@@ -2,6 +2,7 @@
 using FFMediaToolkit.Decoding;
 using FFMediaToolkit.Graphics;
 using OpenTK.Graphics.OpenGL;
+using StbImageSharp;
 using System.Diagnostics;
 
 namespace opengl_mp4_test;
@@ -127,17 +128,29 @@ public class VideoTexture : IDisposable
 
         if (!skip)
         {
-            if (_perfIndex < 10) PerfClock.Restart();
-
             // Flip the frame data vertically to match OpenGL's bottom-left origin
-            int rowBytes = Width * 4; // RGBA32 is 4 bpp
-            byte[] flippedData = new byte[frame.Data.Length];
-            for (int y = 0; y < Height; y++)
-            {
-                int sourceOffset = y * frame.Stride;
-                int destOffset = (Height - 1 - y) * rowBytes;
-                frame.Data.Slice(sourceOffset, rowBytes).CopyTo(flippedData.AsSpan(destOffset, rowBytes));
-            }
+
+            // moved this to the pinned code with the texture copy operation
+            //if (_perfIndex < 10) PerfClock.Restart();
+
+            //var flippedData = frame.Data.ToArray();
+
+            //unsafe
+            //{
+            //    fixed(void* ptr = flippedData)
+            //    {
+            //        StbImage.stbi__vertical_flip(ptr, Width, Height, 4);
+            //    }
+            //}
+
+            //int rowBytes = Width * 4; // RGBA32 is 4 bpp
+            //byte[] flippedData = new byte[frame.Data.Length];
+            //for (int y = 0; y < Height; y++)
+            //{
+            //    int sourceOffset = y * frame.Stride;
+            //    int destOffset = (Height - 1 - y) * rowBytes;
+            //    frame.Data.Slice(sourceOffset, rowBytes).CopyTo(flippedData.AsSpan(destOffset, rowBytes));
+            //}
 
             // Parallel version is about 40X slower for a 360p video, likely due to both thread-scheduling overhead and the
             // extra copy of the frame data needed (because the lambda can't access the frame.Data ref struct directly).
@@ -151,21 +164,23 @@ public class VideoTexture : IDisposable
             //    Array.Copy(frameData, sourceOffset, flippedData, destOffset, rowBytes);
             //});
 
-            if (_perfIndex < 10)
-            {
-                InvertFramePerf += PerfClock.Elapsed;
+            //if (_perfIndex < 10)
+            //{
+            //    InvertFramePerf += PerfClock.Elapsed;
                 PerfClock.Restart();
-            }
+            //}
 
             // The PixelStore calls are apparently not needed and eliminating them slightly improves performance.
             //GL.PixelStore(PixelStoreParameter.UnpackRowLength, frame.Stride / 4); // stride (padding) in bytes divided by 4 RGBA bytes per pixel
             GL.BindTexture(TextureTarget.Texture2D, TextureHandle);
+            var flippedData = frame.Data.ToArray();
             unsafe
             {
                 //fixed (byte* ptr = frame.Data)
-                fixed (byte* ptr = flippedData)
+                fixed (void* ptr = flippedData)
                 {
-                    GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Rgba, PixelType.UnsignedByte, (IntPtr)ptr);
+                    StbImage.stbi__vertical_flip(ptr, Width, Height, 4);
+                    GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Rgba, PixelType.UnsignedByte, (IntPtr)(byte*)ptr);
                 }
             }
             GL.BindTexture(TextureTarget.Texture2D, 0);
