@@ -36,4 +36,5 @@ Stream decoding is just slow.
 
 Given we're measuring microseconds, perf metrics will vary a LOT from one run to the next. If you want to try it on your system, run the app over and over again to get a sense of the range. Always use a Release build, and it's a lot more consistent on a "quiet" system running the app directly (VS still owns the console window and hooks outputs even in Release mode).
 
-Eventually I may try to move video playback support into a background thread, as the CPU is generally under-utilized by Monkey Hi Hat. This should decouple video decoding from the render loop.
+2025-08-23: Even though the CPU is generally under-utilized by Monkey Hi Hat, moving video decoding to a background thread introduced significant stutters. The locking overhead needed to safely update the buffer and read it for uploading to the GPU outweighed the benefit of more frequent stream reads for decoding frame data.
+
