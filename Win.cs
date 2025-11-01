@@ -6,6 +6,7 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace opengl_mp4_test;
 
@@ -38,8 +39,12 @@ public class Win : BaseWindow, IDisposable
     public Win(EyeCandyWindowConfig windowConfig)
         : base(windowConfig, createShaderFromConfig: false)
     {
-        // location of FFmpeg DLLs from gyan.dev; see https://github.com/radek-k/FFMediaToolkit?tab=readme-ov-file#setup
-        FFmpegLoader.FFmpegPath = @"C:\Source\_dev_utils_standalone\ffmpeg_20250303_v7.1.1_bin";
+        // location of ffmpeg libraries
+        // Windows: from gyan.dev; see https://github.com/radek-k/FFMediaToolkit?tab=readme-ov-file#setup
+        // Linux: use your package manager, ie. sudo apt install ffmpeg
+        FFmpegLoader.FFmpegPath =  (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            ? @"C:\Source\_dev_utils_standalone\ffmpeg_20250303_v7.1.1_bin"
+            : @"/usr/lib/x86_64-linux-gnu";
 
         var vertexShaderPathname = "shader.vert";
         var fragmentShaderPathname = "shader.frag";

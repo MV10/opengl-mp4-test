@@ -2,13 +2,17 @@
 
 This wires up the basics of MP4 playback (without audio support) using my [eyecandy](https://github.com/MV10/eyecandy) library and OpenGL support via [OpenTK](https://github.com/opentk/opentk). FFMpeg support is provided by [FFMediaToolkit](https://github.com/radek-k/FFMediaToolkit). This has been successfully added to my [Monkey Hi Hat](https://github.com/MV10/monkey-hi-hat) music visualizer using code that is functionally identical to this example, so it should be a good starting point for anyone looking to add MP4 playback to an OpenGL / OpenTK app.
 
-> It is necessary to download the ffmpeg binaries. The location of these files is specified in the `OnLoad` method of the `Win` class. I used the bin directory in `ffmpeg-7.1.1-full_build-shared.zip` from the [gyan.dev repo](https://github.com/GyanD/codexffmpeg/releases/tag/7.1.1), which is one of the sources recommended by the FFMediaToolkit README.
+> It is necessary to download the ffmpeg binaries. The location of these files is specified in the `OnLoad` method of the `Win` class.
+
+> Windows: I used the bin directory in `ffmpeg-7.1.1-full_build-shared.zip` from the [gyan.dev repo](https://github.com/GyanD/codexffmpeg/releases/tag/7.1.1), which is one of the sources recommended by the FFMediaToolkit README.
+
+> Linux: Use your package manager to install ffmpeg, ie. `sudo apt install ffmpeg` and you'll probably find them in /usr/lib/*-linux-gnu (where * is typically your installed architecture, such as x86_64-linux-gnu).
 
 Note that eyecandy is used as a convenience here -- it provides some basic functionality from the OpenTK windowing support, shader compilation, and uniform handling, but it's entirely incidental to the video playback code. Also note that this example doesn't implement the thread-safety mutex synchronization mechanisms that eyecandy provides, because that only matters when eyecandy is doing audio processing on background threads, which is not used here.
 
 The included `example.mp4` video is one of the small, low-resolution samples from the Monkey Hi Hat README. It is loaded in the `Win.OnLoad` method. Change that if you want to test with a different video.
 
-Frankly I'm not super-impressed with the performance. My desktop is a fairly mid-range setup built in 2020, running an AMD Ryzen 9 3900XT (12 core, 3.8GHz), 16GB of RAM, and an NVIDIA GeForce RTX 2060. Running this app against the included example.mp4 video, I get the following perf metrics:
+Frankly I'm not super-impressed with the performance. My desktop is a fairly mid-range setup built in 2020, running an AMD Ryzen 9 3900XT (12 core, 3.8GHz), 16GB of RAM, and an NVIDIA GeForce RTX 2060. Running this app against the included example.mp4 video in Windows, I get the following perf metrics:
 
 ```
 Average performance of first 10 non-skipped frames:
